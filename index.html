@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام الفاتورة البسيط</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+
+    <style>
+        :root {
+            --main-color: #000;
+            --bg-panel: #f4f7f6;
+            --accent-blue: #2c3e50;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: #e9ecef;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #000;
+        }
+
+        /* --- 1. لوحة التحكم (الادخال) --- */
+        .control-panel {
+            background: white;
+            width: 100%;
+            max-width: 800px;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+            border: 1px solid #ddd;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 15px;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .header-input-group {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+        .header-input-group label { font-size: 0.8rem; color: #777; margin-bottom: 3px; }
+        .header-input-group input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: 'Tajawal';
+        }
+
+        .input-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #555;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-family: 'Tajawal';
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .form-group input:focus {
+            border-color: var(--accent-blue);
+            outline: none;
+            background: #fdfdfd;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            font-family: 'Tajawal';
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 1rem;
+        }
+
+        .btn-add { background-color: var(--accent-blue); color: white; flex: 2; }
+        .btn-add:hover { background-color: #1a252f; }
+        
+        .btn-clear { background-color: #e74c3c; color: white; flex: 1; }
+
+        .btn-print { background-color: #27ae60; color: white; flex: 1; display: none; }
+        .btn-save { background-color: #f39c12; color: white; flex: 1; display: none; }
+
+        /* --- 2. ورقة الفاتورة (التصميم المطابق للصورة) --- */
+        .invoice-paper {
+            background: white;
+            width: 210mm; /* A4 Width */
+            min-height: 297mm;
+            padding: 40px 50px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            position: relative;
+            display: none; /* مخفي افتراضياً */
+        }
+
+        /* ترويسة الفاتورة */
+        .invoice-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 60px;
+        }
+
+        .company-title {
+            font-size: 3rem;
+            font-weight: 800;
+            color: black;
+            max-width: 50%;
+        }
+
+        .invoice-meta {
+            text-align: left; /* محاذاة لليسار كما في الصورة */
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #000;
+            min-width: 200px;
+        }
+        
+        .meta-label { font-weight: bold; }
+        
+        /* تنسيق اسم الزبون */
+        .customer-section {
+            margin-top: 20px; /* مسافة أسفل الوقت */
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+        }
+
+        /* جدول الفاتورة النظيف */
+        .clean-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 40px;
+        }
+
+        .clean-table th {
+            text-align: right;
+            border-bottom: 2px solid #000;
+            padding: 10px 5px;
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .clean-table td {
+            padding: 15px 5px;
+            border-bottom: 1px solid #eee;
+            font-size: 1rem;
+            vertical-align: top;
+        }
+        
+        .clean-table td:first-child { width: 45%; }
+
+        .item-desc { font-weight: bold; font-size: 1.1rem; margin-bottom: 4px; display: block;}
+        .item-dims { font-size: 0.85rem; color: #666; }
+
+        /* التذييل والمجموع */
+        .invoice-footer {
+            border-top: 2px solid #000;
+            padding-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .total-label { font-size: 1.4rem; font-weight: 700; }
+        .total-amount { font-size: 1.4rem; font-weight: 800; }
+
+        /* --- إعدادات الطباعة --- */
+        @media print {
+            body { background: white; padding: 0; }
+            .control-panel { display: none; }
+            .invoice-paper {
+                display: block !important;
+                box-shadow: none;
+                width: 100%;
+                margin: 0;
+                padding: 0; 
+            }
+            @page { margin: 10mm; } /* هوامش بسيطة للطابعة */
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="control-panel">
+        <h3 style="margin-bottom: 15px;"><i class="fas fa-cogs"></i> بيانات الفاتورة الأساسية</h3>
+        
+        <div class="panel-header">
+            <div class="header-input-group">
+                <label>اسم شركتك</label>
+                <input type="text" id="companyNameInput" placeholder="مثال: شركة الحديد والصلب" value="شركة نور الجليل">
+            </div>
+            
+            <div class="header-input-group">
+                <label>اسم الزبون</label>
+                <input type="text" id="customerNameInput" placeholder="اسم العميل هنا...">
+            </div>
+        </div>
+
+        <div class="input-row" style="grid-template-columns: 2fr 1fr 1fr;">
+            <div class="form-group">
+                <label>وصف الصنف</label>
+                <input type="text" id="description" value="عادي" placeholder=" عادي">
+            </div>
+            <div class="form-group">
+                <label>سعر الطن ($)</label>
+                <input type="number" id="pricePerTon" value="800" placeholder="800">
+            </div>
+            <div class="form-group">
+                <label>سعر الصرف</label>
+                <input type="number" id="exchangeRate" value="1400" placeholder="1320">
+            </div>
+        </div>
+
+        <div class="input-row">
+            <div class="form-group">
+                <label>الطول (سم)</label>
+                <input type="number" id="length" placeholder="cm">
+            </div>
+            <div class="form-group">
+                <label>العرض (سم)</label>
+                <input type="number" id="width" placeholder="cm">
+            </div>
+            <div class="form-group">
+                <label>السمك (ملم)</label>
+                <input type="number" id="thickness" placeholder="mm">
+            </div>
+            <div class="form-group">
+                <label>العدد</label>
+                <input type="number" id="quantity" value="1">
+            </div>
+        </div>
+
+        <div class="btn-row">
+            <button class="btn-add" onclick="addItem()">
+                <i class="fas fa-plus"></i> إضافة للقائمة
+            </button>
+            <button class="btn-clear" onclick="clearList()">
+                <i class="fas fa-trash"></i> تفريغ
+            </button>
+        </div>
+        
+        <div class="btn-row" style="border-top: 1px solid #eee; padding-top: 15px; margin-top: 15px;">
+            <button class="btn-print" id="printBtn" onclick="window.print()">
+                <i class="fas fa-print"></i> طباعة الفاتورة
+            </button>
+            <button class="btn-save" id="saveBtn" onclick="saveAsImage()">
+                <i class="fas fa-camera"></i> حفظ كصورة
+            </button>
+        </div>
+    </div>
+
+    <div class="invoice-paper" id="invoicePaper">
+        
+        <div class="invoice-header">
+            <div class="company-title" id="displayCompanyName">شركة نور الجليل</div>
+            
+            <div class="invoice-meta">
+                
+                <div>
+                    <span class="meta-label">صادر من:</span> 
+                    <span id="issuedBy">شركة  نور الجليل</span>
+                </div>
+
+                <div style="margin-top: 10px;">
+                    <span class="meta-label">التوقيت:</span> <br>
+                    <span id="invoiceDate" dir="ltr" style="display:inline-block; text-align:right;">--/--/----</span>
+                </div>
+
+                <div class="customer-section">
+                    <span class="meta-label">إلى السيد:</span> <br>
+                    <span id="displayCustomerName" style="font-weight:bold; font-size:1.2rem;">زبون نقدي</span>
+                </div>
+
+            </div>
+        </div>
+
+        <table class="clean-table">
+            <thead>
+                <tr>
+                    <th>الوصف</th>
+                    <th>سعر الوحدة</th>
+                    <th>عدد</th>
+                    <th>المجموع</th>
+                </tr>
+            </thead>
+            <tbody id="invoiceBody">
+                </tbody>
+        </table>
+
+        <div class="invoice-footer">
+            <div class="total-label">المجموع للفاتورة</div>
+            <div class="total-amount" id="grandTotal">0 د.ع</div>
+        </div>
+
+    </div>
+
+    <script>
+        let items = [];
+        const density = 7850;
+
+        // تحديث التاريخ
+        const now = new Date();
+        document.getElementById('invoiceDate').innerText = now.toLocaleDateString('en-GB') + ' | ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+        // 1. تحديث اسم الشركة
+        document.getElementById('companyNameInput').addEventListener('input', function(e) {
+            const val = e.target.value || "اسم الشركة";
+            document.getElementById('displayCompanyName').innerText = val;
+            document.getElementById('issuedBy').innerText = val;
+        });
+
+        // 2. تحديث اسم الزبون (جديد)
+        document.getElementById('customerNameInput').addEventListener('input', function(e) {
+            const val = e.target.value || "زبون نقدي";
+            document.getElementById('displayCustomerName').innerText = val;
+        });
+
+        function addItem() {
+            const descInput = document.getElementById('description').value;
+            const length = parseFloat(document.getElementById('length').value) || 0;
+            const width = parseFloat(document.getElementById('width').value) || 0;
+            const thick = parseFloat(document.getElementById('thickness').value) || 0;
+            const qty = parseFloat(document.getElementById('quantity').value) || 1;
+            const tonPrice = parseFloat(document.getElementById('pricePerTon').value) || 0;
+            const exchange = parseFloat(document.getElementById('exchangeRate').value) || 1;
+
+            if(length <= 0 || width <= 0 || thick <= 0) {
+                alert('يرجى إدخال الأبعاد بشكل صحيح');
+                return;
+            }
+
+            const lenM = length / 100;
+            const widM = width / 100;
+            const thkM = thick / 1000;
+
+            const weightOne = lenM * widM * thkM * density;
+            const pricePerKg = tonPrice / 1000;
+            const priceOneUSD = weightOne * pricePerKg;
+            const priceOneLocal = priceOneUSD * exchange;
+            const lineTotal = priceOneLocal * qty;
+
+            let finalDesc = descInput ? descInput : " حديد عادي";
+            const dimsDetail = `${length}cm × ${width}cm × ${thick}mm | وزن القطعة: ${weightOne.toFixed(2)}kg`;
+
+            items.push({
+                desc: finalDesc,
+                dims: dimsDetail,
+                priceOne: priceOneLocal,
+                qty: qty,
+                total: lineTotal
+            });
+
+            renderInvoice();
+            
+            // تنظيف حقول القياس فقط
+            document.getElementById('length').value = '';
+            document.getElementById('width').value = '';
+            document.getElementById('description').value = '';
+            document.getElementById('length').focus();
+        }
+
+        function renderInvoice() {
+            const tbody = document.getElementById('invoiceBody');
+            tbody.innerHTML = '';
+
+            let grandTotalVal = 0;
+            const fmt = new Intl.NumberFormat('ar-IQ', { maximumFractionDigits: 0 });
+
+            items.forEach((item) => {
+                grandTotalVal += item.total;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>
+                        <span class="item-desc">${item.desc}</span>
+                        <span class="item-dims">${item.dims}</span>
+                    </td>
+                    <td>${fmt.format(item.priceOne)}</td>
+                    <td>${item.qty}</td>
+                    <td>${fmt.format(item.total)} د.ع</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('grandTotal').innerText = fmt.format(grandTotalVal) + " د.ع";
+
+            if(items.length > 0) {
+                document.getElementById('invoicePaper').style.display = 'block';
+                document.getElementById('printBtn').style.display = 'block';
+                document.getElementById('saveBtn').style.display = 'block';
+            }
+        }
+
+        function clearList() {
+            if(confirm('هل أنت متأكد من مسح القائمة؟')) {
+                items = [];
+                renderInvoice();
+                document.getElementById('invoicePaper').style.display = 'none';
+                document.getElementById('printBtn').style.display = 'none';
+                document.getElementById('saveBtn').style.display = 'none';
+            }
+        }
+
+        function saveAsImage() {
+            const element = document.getElementById('invoicePaper');
+            const btn = document.getElementById('saveBtn');
+            const originalText = btn.innerHTML;
+            
+            btn.innerHTML = '...جاري الحفظ';
+            
+            html2canvas(element, { scale: 2 }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `invoice_${Date.now()}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                btn.innerHTML = originalText;
+            });
+        }
+    </script>
+</body>
+</html>
